@@ -10,7 +10,6 @@ theargs <- R.utils::commandArgs(asValues=TRUE)
 samples_tsv <- theargs$samples
 input_path <- theargs$input
 output_path <- theargs$output
-patient_id <- theargs$patient
 
 ##Reading in manifest TSV file
 samples = read_tsv(samples_tsv)
@@ -84,7 +83,7 @@ emptydrop = llply(1:nrow(as.data.frame(raw_matrices)),function(i){
 }, .parallel = FALSE, .progress = 'text')
 
 dir.create(output_path ,showWarnings = FALSE)
-saveRDS(emptydrop, paste0(output_path, '/', patient_id, 'emptyDrops.rds'))
+saveRDS(emptydrop, paste0(output_path, '/emptyDrops.rds'))
 
 ##Add empty drops information to dataframe
 edcell_counts = t(sapply(emptydrop,function(x)apply(x<0.001,2,sum,na.rm=TRUE)))
@@ -92,10 +91,10 @@ qcs$`Estimated number of cells emptyDrops_GEX` = edcell_counts[,1]
 qcs$`Estimated number of cells emptyDrops_ATAC` = edcell_counts[,2]
 qcs$`% cell lost` = (1 - qcs$`Estimated number of filtered cells`/qcs$`Estimated number of cells`)*100
 
-saveRDS(qcs, paste0(output_path, '/', patient_id, 'qc.rds'))
+saveRDS(qcs, paste0(output_path, '/qc.rds'))
 
 ##Save QC table to path
-write_tsv(qcs , paste0(output_path, '/', patient_id, 'multiome.qc.tsv'))
+write_tsv(qcs , paste0(output_path, '/multiome.qc.tsv'))
 
 ##Defining statistic functions
 getLayerStat = function(qc,donor,layer,metric,na2text=TRUE){
@@ -168,8 +167,8 @@ stats = c("Estimated number of cells",
           "GEX Percent duplicates")
 
 ##Plotting each defined stat for each run of each block
-dir.create(paste(output_path, '/figures'),showWarnings = FALSE)
-pdf(paste(output_path,'/figures/multiome.qc.pdf'), width=length(stats)*3, height=9)
+dir.create(paste0(output_path, '/figures'),showWarnings = FALSE)
+pdf(paste0(output_path,'/figures/multiome.qc.pdf'), width=length(stats)*3, height=9)
 for(donor in sort(unique(qcs$donor))){
   par(mfcol=c(4,length(stats)),bty='n',oma=c(0,0,1.5,0),tcl=-0.2,mgp=c(1.3,0.3,0),mar=c(3,3,2.5,0),cex.main=0.9)
   for(stat in stats){
@@ -190,7 +189,7 @@ plotM = function(qc,stat1,stat2,...){
 }
 
 ##Plotting various scatter comparisons of defined stats
-pdf(paste(output_path,'/figures/multiome.qc.scatters.pdf'), width=9, height=12)
+pdf(paste0(output_path,'/figures/multiome.qc.scatters.pdf'), width=9, height=12)
 par(mfrow=c(4,3),bty='n',oma=c(0,0,1.5,0),tcl=-0.2,mgp=c(1.3,0.3,0),mar=c(3,3,2.5,0))
 plotM(qcs,"Estimated number of cells","Estimated number of cells emptyDrops_GEX",pch=16,col=col[qcs$donor])
 abline(a=0,b=1,lty=2)
@@ -216,7 +215,7 @@ dev.off()
 qcs[qcs$`% cell lost`>50,]
 
 ##Plotting cell counts
-pdf(paste(output_path,'/figures/multiome.cellcounts.scatters.pdf'), width=9, height=6)
+pdf(paste0(output_path,'/figures/multiome.cellcounts.scatters.pdf'), width=9, height=6)
 par(mfrow=c(2,3),bty='n',oma=c(0,0,1.5,0),tcl=-0.2,mgp=c(1.3,0.3,0),mar=c(3,3,2.5,0))
 plotM(qcs,"Estimated number of cells","Estimated number of filtered cells",pch=16,col=col[qcs$donor])
 dev.off()
@@ -228,22 +227,21 @@ filtered_matrices = Sys.glob(file.path("/nfs/team283/GBM_LEAP/phase_2_multiome_d
 counts = lapply(filtered_matrices, function(f){print(f);rowSums(Read10X(f)$`Gene Expression`)})
 counts = do.call(cbind,counts)
 colnames(counts) = qcs$sample_name
-saveRDS(counts, paste0(output_path, '/', patient_id, 'pbcounts.rds'))
+saveRDS(counts, paste0(output_path, '/pbcounts.rds'))
 
 ##Plotting GEX vs ATAC
 lim=c(0,5)
 ybins = xbins = seq(lim[1],lim[2],length.out=50)
 
 zfun = sqrt
-pdf(paste(output_path, '/figures/atac2gex.hm.sqrt.pdf'), width=7*3, height=4*3)
+pdf(paste0(output_path, '/figures/atac2gex.hm.sqrt.pdf'), width=7*3, height=4*3)
 par(mfcol=c(4,7),bty='n',oma=c(0,0,1.5,0),tcl=-0.2,mgp=c(1.3,0.3,0),mar=c(3,3,2.5,0),cex.main=0.9)
 for(i in seq_len(nrow(qcs))){
   print(i)
   bc = bc_metrics[[qcs$sanger_ids[i]]]
   f = bc$is_cell==0
   z=hist2D(log10(1+bc$atac_peak_region_fragments[f]),log10(1+bc$gex_umis_count[f]),xbins,ybins,trimZq=0.0,zfun=zfun,cols=c('#0000FF00','#0000FFAA'),legend=FALSE,xlab='ATAC peak region fragments',ylab='GEX umis count',main=c(qcs$sample_name[i],qcs$sanger_ids[i]),xlim=lim,ylim=lim)
-  p=hist2D(log10(1+bc$atac_peak_region_fragments[!f]),log10(1+bc$gex_umis_count[!f]),xbins,ybins,trimZq=0.0,zfun=zfun,cols=c('#FF000000','#FF0000AA'),new=FALSE,legend=FALSE)#,zlim=range(z$z))
-  legend('topleft',fill=c('red','blue'),legend=paste0(c('Cells','Non-cells'),' (',c(sum(bc$is_cell==1),sum(bc$is_cell==0)),')'))
+  p=hist2D(log10(1+bc$atac_peak_region_fragments[!f]),log10(1+bc$gex_umis_count[!f]),xbins,ybins,trimZq=0.0,zfun=zfun,cols=c('#FF000000','#FF0000AA'),new=FALSE,legend=FALSE)
+  legend('topleft',fill=c('red','blue'),legend=paste0(c('Cells','Non-cells'), '(', c(sum(bc$is_cell==1),sum(bc$is_cell==0)), ')'))
 }
 dev.off()
-```
