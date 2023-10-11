@@ -1,0 +1,50 @@
+#!/bin/bash -e
+
+#BSUB -n 1
+#BSUB -M 4000
+#BSUB -R "span[hosts=1] select[mem>4000] rusage[mem=4000]"
+#BSUB -q basement
+#BSUB -o %J.%I.GBM-download.log
+#BSUB -e %J.%I.GBM-download.err
+
+##NEED TO CHANGE TO YOUR LSF GROUP!!
+#BSUB -G cellgeni
+
+##THE JOB ARRAY NUMBER NEEDS TO BE ONE LESS THAN THE NUMBER OF LINES IN THE MANIFEST FILE!!
+#BSUB -J GBM-download[1-41]
+
+INPUT_TSV="/nfs/cellgeni/tickets/tic-2524/actions/AT21-Transfer-Manifest-Oct23.tsv"
+ROOT_OUTDIR="/nfs/team283/GBM_LEAP/phase_2_multiome_data"
+
+##Change depending on patient
+patient_id="AT21"
+
+##Ensure this uses team283 quota not cellgeni
+newgrp team283
+
+##Get the row of the input tsv equal to the index of the job array, extract irods path and shared_id
+tail -n +2 $INPUT_TSV | head -n $LSB_JOBINDEX | tail -n 1 | cut -f 1,2,3,4,6 | while read ipath cr_name shared_id atac_name gex_name; do
+   ##Make correct directory structure to copy results to
+   mkdir -p "${patient_id}/${shared_id}/${cr_name}"
+   ##Iterate through all files in the irods location
+   while read iloc; do
+     ##Copy every file that does not contain ".bam" in the name
+     if [[ ! $iloc =~ ".bam" ]]; then
+       ##Directories or irods are listed with "C- " before the full path so some manipulation is needed to download the files
+       if [[ $iloc == C-* ]]; then
+         idir=${iloc#C- }
+         dirname=`basename $idir`
+         iget -K -r -v -P --retries 3 --lfrestart "${patient_id}/irods-restart-download.txt" "${idir}" "${patient_id}/${shared_id}/${cr_name}/${dirname}"
+       else
+         iget -K -r -v -P --retries 3 --lfrestart "${patient_id}/irods-restart-download.txt" "${ipath}/${iloc}" "${patient_id}/${shared_id}/${cr_name}/${iloc}"
+       fi
+     fi
+   done < <(icd $ipath && ils | tail -n +2)
+   ##Make output directory structure on Bayraktar NFS
+   mkdir -p "${ROOT_OUTDIR}/${patient_id}/${shared_id}"
+   ##Move downloaded cellranger to NFS
+   mv "${patient_id}/${shared_id}/${cr_name}" "${ROOT_OUTDIR}/${patient_id}/${shared_id}"
+   ##Copy web summaries to new location
+   mkdir -p "${ROOT_OUTDIR}/${patient_id}/web_summaries"
+   cp "${ROOT_OUTDIR}/${patient_id}/${shared_id}/${cr_name}/web_summary.html" "${ROOT_OUTDIR}/${patient_id}/web_summaries/${atac_name}_${gex_name}_web_summary.html"
+done
