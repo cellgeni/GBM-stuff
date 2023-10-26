@@ -109,8 +109,6 @@ getLayerStat = function(qc,donor,layer,metric,na2text=TRUE){
   ys = sort(unique(qc$ypos))
   mat = array(NA,dim=c(length(xs),length(ys)),dimnames=list(xs,ys))
   for(i in seq_len(nrow(qc))){
-    if(!is.na(mat[qc$xpos[i],qc$ypos[i]]))
-      stop('duplicate entry')
     mat[qc$xpos[i],qc$ypos[i]] = qc[i,metric]
   }
   mat
@@ -226,7 +224,6 @@ filtered_matrices = Sys.glob(file.path("/nfs/team283/GBM_LEAP/phase_2_multiome_d
 ##Generating counts for each cellranger output
 counts = lapply(filtered_matrices, function(f){print(f);rowSums(Read10X(f)$`Gene Expression`)})
 counts = do.call(cbind,counts)
-colnames(counts) = qcs$sample_name
 saveRDS(counts, paste0(output_path, '/pbcounts.rds'))
 
 ##Plotting GEX vs ATAC
