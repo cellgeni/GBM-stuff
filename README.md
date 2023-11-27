@@ -1,2 +1,2 @@
-# GBM-QC
-Storing the scripts for use in GBM QC
+# GBM-stuff
+Storing the scripts for use in the GBM project 
