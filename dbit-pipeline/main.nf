@@ -17,14 +17,14 @@ process filter_primer {
 
   label 'filter'
 
-  publishDir "${params.outdir}/QC", mode: 'copy', pattern: "*._stats.primer.txt"
+  publishDir "${params.outdir}/QC", mode: 'copy', pattern: "*_stats.primer.txt"
 
   input:
   tuple val(sampleid), path(fastq_R1), path(fastq_R2)
 
   output:
   tuple val(sampleid), path("*_raw_qc_primer_R1.fastq.gz"), path("*_raw_qc_primer_R2.fastq.gz"), emit: fq_tuple
-  path("*_stats.primer.txt")
+  path("*_stats.primer.txt") //for publishDir purposes
   
   shell:
   '''
@@ -45,14 +45,14 @@ process filter_L1 {
 
   label 'filter'
  
-  publishDir "${params.outdir}/QC", mode: 'copy', pattern: "*._stats.linker1.txt"
+  publishDir "${params.outdir}/QC", mode: 'copy', pattern: "*_stats.linker1.txt"
 
   input:
   tuple val(sampleid), path(fastq_R1), path(fastq_R2)
 
   output:
   tuple val(sampleid), path("*_raw_qc_linker1_R1.fastq.gz"), path("*_raw_qc_linker1_R2.fastq.gz"), emit: fq_tuple
-  path("*_stats.linker1.txt")
+  path("*_stats.linker1.txt") //for publishDir purposes
   
   shell:
   '''
@@ -73,15 +73,15 @@ process filter_L2 {
 
   label 'filter'
 
-  publishDir "${params.outdir}/QC", mode: 'copy', pattern: "*._stats.linker2.txt"
+  publishDir "${params.outdir}/QC", mode: 'copy', pattern: "*_stats.linker2.txt"
 
   input:
   tuple val(sampleid), path(fastq_R1), path(fastq_R2)
 
   output:
-  tuple val(sampleid), path("*_raw_qc_R1.fastq.gz"), emit: r1_tuple
+  tuple val(sampleid), path("*_S1_L001_R3_001.fastq.gz"), emit: r3_tuple
   tuple val(sampleid), path("*_raw_qc_R2.fastq.gz"), emit: r2_tuple
-  path("*_stats.linker2.txt")
+  path("*_stats.linker2.txt") //for publishDir purposes
 
   shell:
   '''
@@ -89,31 +89,11 @@ process filter_L2 {
     in1=!{fastq_R1} \
     in2=!{fastq_R2} \
     literal=ATCCACGTGCTTGAGAGGCCAGAGCATTCG \
-    outm1="!{sampleid}_raw_qc_R1.fastq.gz" \
+    outm1="!{sampleid}_S1_L001_R3_001.fastq.gz" \
     outm2="!{sampleid}_raw_qc_R2.fastq.gz" \
     stats="!{sampleid}_stats.linker2.txt" \
     k=30 mm=f rcomp=f restrictleft=70 skipr1=t \
     hdist=3 \
-    threads=!{task.cpus}
-  '''
-}
-
-process additional_filter {
-  //inspecting fastqs with pm19 looked like the first 31 bases were technical and not biological so needed to remove this
-  label 'filter'
-
-  input:
-  tuple val(sampleid), path(fastq_R1)
-
-  output:
-  tuple val(sampleid), path("*_S1_L001_R3_001.fastq.gz"), emit: r3_tuple
-
-  shell:
-  '''
-  !{projectDir}/bin/bbmap/bbduk.sh \
-    in=!{fastq_R1} \
-    forcetrimleft=32 \
-    out="!{sampleid}_S1_L001_R3_001.fastq.gz" \
     threads=!{task.cpus}
   '''
 }
@@ -134,19 +114,19 @@ process bc_process {
   '''
 }
 
-
 process cell_ranger {
 
-  publishDir "${params.outdir}/${sampleid}", mode: 'copy', pattern: '*'
+  publishDir "${params.outdir}", mode: 'copy'
 
   input:
   tuple val(sampleid), path(fastq_R3, stageAs: 'fastqs/*'), path(fastq_R1, stageAs: 'fastqs/*'), path(fastq_R2, stageAs: 'fastqs/*')
-  //tuple val(sampleid), path(fastq_R3, stageAs: {filename -> filename.toString().substring(0, filename.toString().indexOf('raw')) + "S1_L001_R3_001.fastq.gz"}) , path(fastq_R1), path(fastq_R2)
 
-  //--reference="/nfs/srpipe_references/downloaded_from_10X/refdata-cellranger-arc-GRCh38-2020-A" \
+  output:
+  path("*") //for publishDir purposes
+
   shell:
   '''
-  /lustre/scratch127/cellgen/cellgeni/tickets/tic-2598/cellranger-atac-2.0.0/bin/cellranger-atac count \
+  !{projectDir}/bin/cellranger-atac-2.0.0/bin/cellranger-atac count \
     --id=!{sampleid} \
     --reference="/nfs/srpipe_references/downloaded_from_10X/refdata-cellranger-arc-GRCh38-2020-A-2.0.0" \
     --fastqs="fastqs" \
@@ -164,8 +144,5 @@ workflow {
     filter_L1(filter_primer.out.fq_tuple)
     filter_L2(filter_L1.out.fq_tuple)
     bc_process(filter_L2.out.r2_tuple)
-    //filter_L2.out.r2_tuple | map { val, filename -> file_prefix=filename.toString().substring(0, filename.toString().indexOf('raw')); println "${file_prefix}S1_L001_R3_001.fastq.gz" }
-    //filter_L2.out.r2_tuple | map { val, filename -> println filename.toString().substring(0, filename.toString().indexOf('raw')) + "S1_L001_R3_001.fastq.gz" }
-    additional_filter(filter_L2.out.r1_tuple)
-    additional_filter.out.r3_tuple.join(bc_process.out.fq_tuple) | cell_ranger 
+    filter_L2.out.r3_tuple.join(bc_process.out.fq_tuple) | cell_ranger 
 }
