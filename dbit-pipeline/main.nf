@@ -24,7 +24,7 @@ process filter_primer {
 
   output:
   tuple val(sampleid), path("*_raw_qc_primer_R1.fastq.gz"), path("*_raw_qc_primer_R2.fastq.gz"), emit: fq_tuple
-  path("*_stats.primer.txt") //for publishDir purposes
+  path("*_stats.primer.txt")
   
   shell:
   '''
@@ -52,7 +52,7 @@ process filter_L1 {
 
   output:
   tuple val(sampleid), path("*_raw_qc_linker1_R1.fastq.gz"), path("*_raw_qc_linker1_R2.fastq.gz"), emit: fq_tuple
-  path("*_stats.linker1.txt") //for publishDir purposes
+  path("*_stats.linker1.txt")
   
   shell:
   '''
@@ -81,7 +81,7 @@ process filter_L2 {
   output:
   tuple val(sampleid), path("*_S1_L001_R3_001.fastq.gz"), emit: r3_tuple
   tuple val(sampleid), path("*_raw_qc_R2.fastq.gz"), emit: r2_tuple
-  path("*_stats.linker2.txt") //for publishDir purposes
+  path("*_stats.linker2.txt")
 
   shell:
   '''
@@ -114,9 +114,11 @@ process bc_process {
   '''
 }
 
+
 process cell_ranger {
 
-  publishDir "${params.outdir}", mode: 'copy'
+  publishDir "${params.outdir}/${sampleid}", mode: 'copy', pattern: "${sampleid}", saveAs: {filename -> "cellranger-output"}
+  publishDir "${params.outdir}/${sampleid}", mode: 'copy', pattern: "fastqs"
 
   input:
   tuple val(sampleid), path(fastq_R3, stageAs: 'fastqs/*'), path(fastq_R1, stageAs: 'fastqs/*'), path(fastq_R2, stageAs: 'fastqs/*')
