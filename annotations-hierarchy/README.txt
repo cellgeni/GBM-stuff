@@ -7,4 +7,4 @@ RUNNING
 Activate conda environment. Run python script as:
 python roi2data.py path/to/csv path/to/output/folder 
 
-
+After running you will be asked for OMERO credentials
