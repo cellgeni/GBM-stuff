@@ -17,5 +17,9 @@ Activate conda environment. Run python script as:
 ```
 python ann2SR.py path/to/csv path/to/output/folder 
 ```
+or:
+```
+python categorical_ann2SR.py path/to/csv path/to/output/folder 
+```
 
 After running you will be asked for OMERO credentials
