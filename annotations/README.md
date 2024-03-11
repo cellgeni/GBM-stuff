@@ -1,7 +1,3 @@
-## Preparation
-
-Install conda environment using **environment.yml**. Make sure you have admin credentials for OMERO before running the script. Make a csv table file with information about OMERO ID of the sample, path to SpaceRanger output and rotational information. See **example.csv**
-
 ## Description
 
 There are 2 codes for annotating VISIUM spots with pathological annotations taken from **OMERO**. 
@@ -10,6 +6,13 @@ There are 2 codes for annotating VISIUM spots with pathological annotations take
 **ann2SR.py** - is more advanced version of **categorical_ann2SR.py** as it contains table with fractional distribution of VISIUM spot (which has a certain size) across all ROIs. Also there is a hierarchical information about the ROIs, their level, "children" (ROIs within a given ROI) and "parents" (all ROIs that contain given ROI). Spatial table of fractional spational distribution is saved in ```adata.obs``` and hierarchical information about ROIs is saved in ``` adata.uns[‘rois_hierarchy’] ```
 
 Both of the functions use the same input (csv file) and output (output folder path)
+
+
+
+## Preparation
+
+Install conda environment using **environment.yml**. Make sure you have admin credentials for OMERO before running the script. Make a csv table file with information about OMERO ID of the sample, path to SpaceRanger output and rotational information. See **example.csv**
+
 
 ## Running
 
