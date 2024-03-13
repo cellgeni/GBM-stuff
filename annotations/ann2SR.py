@@ -58,6 +58,7 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
             try:
                 primary_shape = roi.getPrimaryShape()
                 name = primary_shape.getTextValue().val
+                if name == '': name = 'not_labelled'
                 #, separates x and y and  space separates points
                 points = [(lambda xy : list(map(float,xy.split(","))))(xy) for xy in primary_shape.getPoints().val.split(" ")]
                 ROIs.append({
