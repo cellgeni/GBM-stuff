@@ -14,6 +14,10 @@ Both of the functions use the same input (csv file) and output (output folder pa
 
 Install conda environment using **environment.yml**. Make sure you have admin credentials for OMERO before running the script. Make a csv table file with information about OMERO ID of the sample, path to SpaceRanger output and rotational information. See **example.csv**
 
+To install, run:
+```
+conda env create -n your_env_name -f environment.yml
+```
 
 ## Running
 
