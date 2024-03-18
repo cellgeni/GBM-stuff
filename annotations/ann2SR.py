@@ -26,15 +26,15 @@ log = logging.getLogger(__name__)
 def get_OMERO_credentials():
     logging.basicConfig(format='%(asctime)s %(message)s')    
     log.setLevel(logging.DEBUG)
-    omero_host = "wsi-omero-prod-01.internal.sanger.ac.uk"
-    omero_username = input("Username")
-    omero_password = getpass("Password")
+    omero_host = "wsi-omero-prod-02.internal.sanger.ac.uk"
+    omero_username = input("Username$")
+    omero_password = getpass("Password$")
     return omero_host, omero_username, omero_password
 
-def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_image_id):
+def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_image_id, path_ann_csv):
     ROIs = []
     log.info(f"Connecting to OMERO at {omero_host}")
-    with BlitzGateway(omero_username, omero_password, host=omero_host, secure=True) as conn:
+    with BlitzGateway(omero_username, omero_password, host=omero_host, port=4064, secure=True) as conn:
         # search image
         log.info(f"Looking for ImageId {omero_image_id}")
         conn.SERVICE_OPTS.setOmeroGroup('-1')
@@ -42,35 +42,60 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
         # set group for image
         log.info(f"Found image id={image.id} name='{image.name}'")
         log.info(f"Found image in group id={image.details.group.id.val} name='{image.details.group.name.val}'")
-        
+        '''
         log.info(f"Storing rendered thumbnail in memory for QC")
         img_data = image.getThumbnail() #tiny preview image
         rendered_thumb = Image.open(io.BytesIO(img_data))
-        
+        '''
         group_id = image.details.group.id #check group id
-        conn.setGroupForSession(group_id)
+        print(group_id.val)
+        conn.setGroupForSession(group_id.val)
+        print(conn)
         # get image ROIs
         roi_service = conn.getRoiService()
+        print(roi_service)
         log.info("Retrieving ROIs")
         result = roi_service.findByImage(image.id, None)
         #result has property roi - for one given image id
         for roi in result.rois:
-            try:
-                primary_shape = roi.getPrimaryShape()
-                name = primary_shape.getTextValue().val
-                if name == '': name = 'not_labelled'
-                #, separates x and y and  space separates points
-                points = [(lambda xy : list(map(float,xy.split(","))))(xy) for xy in primary_shape.getPoints().val.split(" ")]
-                ROIs.append({
-                    "name": name,
-                    "points": points
-                })
-                log.debug(f"Found ROI id={roi.id.val} name='{name}' type={primary_shape.__class__.__name__}")
-            except:
-                pass
+
+            primary_shape = roi.getPrimaryShape()
+            name = primary_shape.getTextValue().val
+            print(name)
+            #if ROI name is empty - renamed to "Non_labelled", makes sure first letter is capital, if additional csv provided - unified all different ROIs name into one
+            name = rename_ROI(name, path_ann_csv)
+            print(name)
+            #, separates x and y and  space separates points
+            points = [(lambda xy : list(map(float,xy.split(","))))(xy) for xy in primary_shape.getPoints().val.split(" ")]
+            ROIs.append({
+                "name": name,
+                "points": points
+            })
+            log.debug(f"Found ROI id={roi.id.val} name='{name}' type={primary_shape.__class__.__name__}")
+
     log.info(f"Found {len(ROIs)} ROIs in total")
     return ROIs, image
 
+
+def rename_ROI(old_name, path_ann_name_csv=None):
+    name = old_name
+    if name == '': name = 'Not_Labelled'
+    name = make_first_letter_upper(name)
+    if path_ann_name_csv:
+        ann_name = pd.read_csv(path_ann_name_csv)
+        if (ann_name[ann_name['original'].isin([name])]).shape[0]>0:
+            index = ann_name[ann_name['original'].isin([name])].index[0]
+            name = ann_name['unified'][index]
+    return str(name)
+        
+        
+
+    
+def make_first_letter_upper(some_string):
+    if some_string[0].isupper() == False:
+        some_string = some_string[0].upper() + some_string[1:]
+    return some_string
+ 
 def read_SR_to_anndata(spaceranger_path):
     log.info(f"Reading spaceranger output from: '{spaceranger_path}'.")
     adata = sq.read.visium(spaceranger_path)
@@ -306,7 +331,7 @@ def replace_symbol_by_dash_in_table(some_table):
             my_table = my_table.rename(columns = {column_name: column_name2})
     return my_table
 
-def main(csv_path, out_folder, save_small_image = True, save_images_rois = True):
+def main(csv_path, out_folder, path_ann_csv = None, save_small_image = False, save_images_rois = False):
     table_input = pd.read_csv(csv_path)
     #initialization
     omero_host, omero_username, omero_password = get_OMERO_credentials()
@@ -319,7 +344,7 @@ def main(csv_path, out_folder, save_small_image = True, save_images_rois = True)
         flipX = bool(table_input['FlipHorizontal'][i])
         flipY = bool(table_input['FlipVertical'][i])
         print('Sample ID: ' + str(omero_image_id))
-        ROIs, image = collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_image_id)
+        ROIs, image = collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_image_id, path_ann_csv)
         adata = read_SR_to_anndata(spaceranger_path)
         df_in_tissue = read_tissue_positions_SR(spaceranger_path)
         
@@ -350,7 +375,7 @@ def main(csv_path, out_folder, save_small_image = True, save_images_rois = True)
         adata.uns.update({'rois_hierarchy': dict_rois_level})
         
         #save adata
-        adata_path = out_folder + '/' + sample_name
+        adata_path = out_folder + '/' + sample_name + '.h5ad'
         adata.write_h5ad(adata_path)
         
         #save images
