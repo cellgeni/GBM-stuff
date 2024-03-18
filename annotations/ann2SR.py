@@ -48,12 +48,9 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
         rendered_thumb = Image.open(io.BytesIO(img_data))
         '''
         group_id = image.details.group.id #check group id
-        print(group_id.val)
         conn.setGroupForSession(group_id.val)
-        print(conn)
         # get image ROIs
         roi_service = conn.getRoiService()
-        print(roi_service)
         log.info("Retrieving ROIs")
         result = roi_service.findByImage(image.id, None)
         #result has property roi - for one given image id
@@ -61,10 +58,8 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
 
             primary_shape = roi.getPrimaryShape()
             name = primary_shape.getTextValue().val
-            print(name)
             #if ROI name is empty - renamed to "Non_labelled", makes sure first letter is capital, if additional csv provided - unified all different ROIs name into one
             name = rename_ROI(name, path_ann_csv)
-            print(name)
             #, separates x and y and  space separates points
             points = [(lambda xy : list(map(float,xy.split(","))))(xy) for xy in primary_shape.getPoints().val.split(" ")]
             ROIs.append({
