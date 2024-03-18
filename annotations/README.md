@@ -32,7 +32,7 @@ python categorical_ann2SR.py path/to/csv path/to/output/folder
 
 After running you will be asked for OMERO credentials
 
-In case you have many regions with slightly different names or typos in their name, that belongs to one class (for example: "Basilar artery", "basilar artery", "Basilar Artery", "Basilar arteiry" etc), you can manually create a dictionary csv with two columns: "original" and "unified" that can be used to correct names, so all ROIs with some differences in the names will appear as one class. As example see "Dictionary_annotations_example.csv". In this case you'll have to run the code as:
+In case you have many regions with slightly different names or typos in their name, that belongs to one class (for example: "Basilar artery", "basilar artery", "Basilar Artery", "Basilar arteiry" etc), you can manually create a dictionary csv with two columns: "original" and "unified" that can be used to correct names, so all ROIs with some differences in the names will appear as one class. As example see **Dictionary_annotations_example.csv**. In this case you'll have to run the code as:
 ```
 python ann2SR.py path/to/csv path/to/output/folder path/to/Dictionary_annotations.csv
 ```
