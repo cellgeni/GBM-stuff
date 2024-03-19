@@ -66,11 +66,15 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
             name = rename_ROI(name, path_ann_csv)
             #print(name)
             #, separates x and y and  space separates points
-            points = [(lambda xy : list(map(float,xy.split(","))))(xy) for xy in primary_shape.getPoints().val.split(" ")]
-            ROIs.append({
+            try:
+                points = [(lambda xy : list(map(float,xy.split(","))))(xy) for xy in primary_shape.getPoints().val.split(" ")]
+                ROIs.append({
                 "name": name,
                 "points": points
-            })
+                })
+            except:
+                pass
+            
             log.debug(f"Found ROI id={roi.id.val} name='{name}' type={primary_shape.__class__.__name__}")
 
     log.info(f"Found {len(ROIs)} ROIs in total")
@@ -262,6 +266,7 @@ def define_one_ROI_per_spot(df_rois, rois_dict):
     for i in range(df_rois.shape[0]):
         row = df_rois.iloc[[i]]
         list_of_rois = get_rois_non_zero(row)
+        roi_name_max_level = np.nan
         if len(list_of_rois) == 1:
             single_column_df['ROI_one'].iloc[i] = list_of_rois[0]
         else:
@@ -272,7 +277,9 @@ def define_one_ROI_per_spot(df_rois, rois_dict):
                 if rois_dict[roi_name]['level']>level_max:
                     level_max = rois_dict[roi_name]['level']
                     roi_name_max_level = roi_name
+            
             single_column_df['ROI_one'].iloc[i] = roi_name_max_level
+            
     return single_column_df
 
 def add_nlevel(dictionary):
@@ -288,8 +295,10 @@ def add_nlevel(dictionary):
                 n_lvl.append(dictionary[parent_name]['level'] + 1)
             dictionary[n_roi]['level'] = np.max(np.array(n_lvl))
             dictionary[n_roi]['changed'] = 1
-    qq = get_changed_rois(dictionary)    
-    while len(get_changed_rois(dictionary))>0:
+    qq = get_changed_rois(dictionary)
+    n_iter = 0
+    while len(get_changed_rois(dictionary))>0 and n_iter<100:
+        n_iter+=1
         for n_roi in dictionary.keys():
             parents = dictionary[n_roi]['parents']
             if len(parents)>0:
@@ -302,6 +311,12 @@ def add_nlevel(dictionary):
                     dictionary[n_roi]['changed'] = 1
                 else:
                     dictionary[n_roi]['changed'] = 0
+    
+    #check if there was a logical eroor in ROIs hierarchy: Region A is inside Region B, and at the same time Region B is inside of region B
+    if n_iter == 100:
+        print('Impossible to determine ROis levels as there is a hierarchy error!')
+        for n_roi in dictionary.keys():
+            dictionary[n_roi]['level'] = np.nan
 
     for n_roi in dictionary.keys():
         del(dictionary[n_roi]['changed'])
@@ -349,23 +364,22 @@ def main(csv_path, out_folder, path_ann_csv = None, save_small_image = True, sav
         adata = read_SR_to_anndata(spaceranger_path)
         df_in_tissue = read_tissue_positions_SR(spaceranger_path)
         
-        
+        #rotate and flip polygons of ROIs
         New_polygons = rotate_flip_all_polygons(ROIs, image, rot_angle, flipX, flipY)
-
 
         #assign annotations and get gierarchy information about ROIs
         gROIs = group_ROIs_by_group(ROIs, New_polygons) # I update gROIs with also new polygons after rotation
         df_annotations = assign_barcode_rois(gROIs, df_in_tissue, spaceranger_path)
         df_annotations = replace_symbol_by_dash_in_table(df_annotations)
         dict_rois = get_dict_with_parents_child(gROIs)
+        
         dict_rois_level = add_nlevel(dict_rois)
         dict_rois_level = replace_symbol_by_dash_in_dict(dict_rois_level)
         assert len(adata.obs)==len(df_annotations), "Inconsistent length between observations and annotations"
-
+        
         #adding column with categorical annotation based on highest level roi
         single_col_df = define_one_ROI_per_spot(df_annotations, dict_rois_level)
         df_annotations = pd.concat([df_annotations, single_col_df], axis = 1)
-                
         #adding all information to anndata
         adata.obs = pd.concat([adata.obs, df_annotations],axis=1)
         adata.obs['ROI_one'] = adata.obs['ROI_one'].astype('object')
