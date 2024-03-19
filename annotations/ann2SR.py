@@ -42,15 +42,18 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
         # set group for image
         log.info(f"Found image id={image.id} name='{image.name}'")
         log.info(f"Found image in group id={image.details.group.id.val} name='{image.details.group.name.val}'")
-        '''
+        
         log.info(f"Storing rendered thumbnail in memory for QC")
         img_data = image.getThumbnail() #tiny preview image
         rendered_thumb = Image.open(io.BytesIO(img_data))
-        '''
+       
         group_id = image.details.group.id #check group id
+        #print(group_id.val)
         conn.setGroupForSession(group_id.val)
+        #print(conn)
         # get image ROIs
         roi_service = conn.getRoiService()
+        #print(roi_service)
         log.info("Retrieving ROIs")
         result = roi_service.findByImage(image.id, None)
         #result has property roi - for one given image id
@@ -58,8 +61,10 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
 
             primary_shape = roi.getPrimaryShape()
             name = primary_shape.getTextValue().val
+            #print(name)
             #if ROI name is empty - renamed to "Non_labelled", makes sure first letter is capital, if additional csv provided - unified all different ROIs name into one
             name = rename_ROI(name, path_ann_csv)
+            #print(name)
             #, separates x and y and  space separates points
             points = [(lambda xy : list(map(float,xy.split(","))))(xy) for xy in primary_shape.getPoints().val.split(" ")]
             ROIs.append({
@@ -326,7 +331,7 @@ def replace_symbol_by_dash_in_table(some_table):
             my_table = my_table.rename(columns = {column_name: column_name2})
     return my_table
 
-def main(csv_path, out_folder, path_ann_csv = None, save_small_image = False, save_images_rois = False):
+def main(csv_path, out_folder, path_ann_csv = None, save_small_image = True, save_images_rois = True):
     table_input = pd.read_csv(csv_path)
     #initialization
     omero_host, omero_username, omero_password = get_OMERO_credentials()
@@ -343,12 +348,12 @@ def main(csv_path, out_folder, path_ann_csv = None, save_small_image = False, sa
         adata = read_SR_to_anndata(spaceranger_path)
         df_in_tissue = read_tissue_positions_SR(spaceranger_path)
         
-        if rot_angle!=0 and flipX!=False and flipY!=False:
-            New_polygons = rotate_flip_all_polygons(ROIs, image, rot_angle, flipX, flipY)
-        else:
+        if rot_angle==0 and flipX==False and flipY==False:
             New_polygons = []
             for roi in ROIs:
                 New_polygons.append(Polygon(roi['points']))
+        else:
+            New_polygons = rotate_flip_all_polygons(ROIs, image, rot_angle, flipX, flipY)
 
 
         #assign annotations and get gierarchy information about ROIs
