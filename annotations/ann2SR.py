@@ -126,6 +126,7 @@ def rotate_flip_polygon(polygon, img_center, rot_angle, flipX=False, flipY=False
 def rotate_flip_all_polygons(ROIs, image, rot_angle, flipX, flipY):
     New_polygons = []
     for roi in ROIs:
+        
         polygon = rotate_flip_polygon(Polygon(roi['points']), [image.getSizeX()/2, image.getSizeY()/2], rot_angle, flipX, flipY)
         New_polygons.append(polygon)
     return New_polygons
@@ -163,10 +164,10 @@ def read_tissue_positions_SR(spaceranger_path):
     log.info(f"Total spots: {len(df)}. Spots in_tissue: {len(df_in_tissue)}.")
     return df_in_tissue
 
-def group_ROIs_by_group(ROIs):
+def group_ROIs_by_group(ROIs, New_polygons):
     gROIs = {}
-    for roi in ROIs:
-        polygon = Polygon(roi['points'])
+    for roi,pol in zip(ROIs, New_polygons):
+        polygon = pol
         key = roi['name']
         if key in gROIs:
             gROIs[key].append(polygon)
@@ -348,16 +349,12 @@ def main(csv_path, out_folder, path_ann_csv = None, save_small_image = True, sav
         adata = read_SR_to_anndata(spaceranger_path)
         df_in_tissue = read_tissue_positions_SR(spaceranger_path)
         
-        if rot_angle==0 and flipX==False and flipY==False:
-            New_polygons = []
-            for roi in ROIs:
-                New_polygons.append(Polygon(roi['points']))
-        else:
-            New_polygons = rotate_flip_all_polygons(ROIs, image, rot_angle, flipX, flipY)
+        
+        New_polygons = rotate_flip_all_polygons(ROIs, image, rot_angle, flipX, flipY)
 
 
         #assign annotations and get gierarchy information about ROIs
-        gROIs = group_ROIs_by_group(ROIs)
+        gROIs = group_ROIs_by_group(ROIs, New_polygons) # I update gROIs with also new polygons after rotation
         df_annotations = assign_barcode_rois(gROIs, df_in_tissue, spaceranger_path)
         df_annotations = replace_symbol_by_dash_in_table(df_annotations)
         dict_rois = get_dict_with_parents_child(gROIs)
