@@ -134,14 +134,14 @@ def read_tissue_positions_SR(spaceranger_path):
         tissue_positions = os.path.join(spaceranger_path,"spatial/tissue_positions.csv")
     
     log.info(f"Reading spots coordintes from '{tissue_positions}'.")
-    #try:
+    try:
     # spacernger v2.10
     # spatial/tissue_positions.csv has a header row
-    df = pd.read_csv(
-        tissue_positions,
-        index_col="barcode"
-    )
-    '''
+        df = pd.read_csv(
+            tissue_positions,
+            index_col="barcode"
+        )
+    
     except ValueError:
         # spaceranger v1.30
         # spatial/tissue_positions_list.csv doesn't have a header row
@@ -150,7 +150,7 @@ def read_tissue_positions_SR(spaceranger_path):
             index_col="barcode",
             names=["barcode","in_tissue","array_row","array_col","pxl_row_in_fullres","pxl_col_in_fullres"]
        )
-    '''
+    
         # let's make sure pixel coordinates are numbers and in_tisssue is boolean
     df = df.astype({"in_tissue": bool, "pxl_row_in_fullres": int, "pxl_col_in_fullres":int})
     # filter spots that are only in the tissue
