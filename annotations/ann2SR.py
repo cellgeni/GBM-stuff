@@ -84,6 +84,7 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
 def rename_ROI(old_name, path_ann_name_csv=None):
     name = old_name
     if name == '': name = 'Not_Labelled'
+    name = name.replace('/', '-')
     name = make_first_letter_upper(name)
     if path_ann_name_csv:
         ann_name = pd.read_csv(path_ann_name_csv)
@@ -210,7 +211,7 @@ def assign_barcode_rois(gROIs, df_in_tisssue, spaceranger_path):
         annotations.append({"barcode": barcode, "annotations":spot_annotations})
     data = [{"barcode": a["barcode"], **a["annotations"]} for a in annotations]
     df = pd.DataFrame(data).set_index("barcode")
-    return df
+    return df, spot_radius
 
 def get_dict_with_parents_child(gROIs):
     hierarchy={}
@@ -243,6 +244,17 @@ def get_changed_rois(dictionary):
             changed_rois.append(n_roi)
     return changed_rois
 
+def get_area_of_corresponding_polygon(polygon_list, point_x, point_y, spot_radius):
+    spot = Point([point_x,point_y]).buffer(spot_radius)
+    area_roi = np.nan
+    for polygon in polygon_list:
+        if spot.intersects(polygon):
+            area_roi = polygon.area
+            break
+    return area_roi
+
+
+
 def get_rois_non_zero(df_row):
     qq = np.where(df_row>0)
     list_of_rois = []
@@ -253,8 +265,9 @@ def get_rois_non_zero(df_row):
         list_of_rois = [None]
     return list_of_rois
 
-def define_one_ROI_per_spot(df_rois, rois_dict):
-    
+def define_one_ROI_per_spot(df_rois, rois_dict, gROIs, spot_radius, df_in_tissue):
+    print(df_rois.shape)
+    print(df_in_tissue.shape)
     list_of_indeces = df_rois.index
     n = len(list_of_indeces)
     lst_Nones = [None for _ in range(n)]
@@ -266,17 +279,40 @@ def define_one_ROI_per_spot(df_rois, rois_dict):
     for i in range(df_rois.shape[0]):
         row = df_rois.iloc[[i]]
         list_of_rois = get_rois_non_zero(row)
-        roi_name_max_level = np.nan
+        #roi_name_max_level = 'Na
         if len(list_of_rois) == 1:
-            single_column_df['ROI_one'].iloc[i] = list_of_rois[0]
+            
+            if list_of_rois[0] is None:
+                single_column_df['ROI_one'].iloc[i] = 'nan'
+            else:
+                single_column_df['ROI_one'].iloc[i] = list_of_rois[0]
+        
         else:
             #search for the roi with the highest level
-            level_max = -1
-            for roi_name in list_of_rois:
-                #print(roi_name)
-                if rois_dict[roi_name]['level']>level_max:
-                    level_max = rois_dict[roi_name]['level']
-                    roi_name_max_level = roi_name
+            if np.isnan(rois_dict[list_of_rois[0]]['level']):
+                # if levels of annoations ROIs are not defined, I chose the smallest one by area 
+                for roi_name in list_of_rois:
+                    polygon_list = gROIs[roi_name]
+                    pos_spot_x = df_in_tissue['pxl_col_in_fullres'][i]; pos_spot_y = df_in_tissue['pxl_row_in_fullres'][i];
+                    area_polygon = get_area_of_corresponding_polygon(polygon_list, pos_spot_x, pos_spot_y, spot_radius)
+                    print(roi_name)
+                    print(area_polygon)
+                    if roi_name==list_of_rois[0]:
+                        area_min = area_polygon
+                        roi_name_max_level = roi_name
+                    else:
+                        if area_polygon<area_min:
+                            area_min = area_polygon
+                            roi_name_max_level = roi_name
+                    
+                
+            else:
+                level_max = -1
+                for roi_name in list_of_rois:
+                    #print(roi_name)
+                    if rois_dict[roi_name]['level']>level_max:
+                        level_max = rois_dict[roi_name]['level']
+                        roi_name_max_level = roi_name
             
             single_column_df['ROI_one'].iloc[i] = roi_name_max_level
             
@@ -369,22 +405,23 @@ def main(csv_path, out_folder, path_ann_csv = None, save_small_image = True, sav
 
         #assign annotations and get gierarchy information about ROIs
         gROIs = group_ROIs_by_group(ROIs, New_polygons) # I update gROIs with also new polygons after rotation
-        df_annotations = assign_barcode_rois(gROIs, df_in_tissue, spaceranger_path)
-        df_annotations = replace_symbol_by_dash_in_table(df_annotations)
+        df_annotations, spot_radius = assign_barcode_rois(gROIs, df_in_tissue, spaceranger_path)
+        #df_annotations = replace_symbol_by_dash_in_table(df_annotations)
         dict_rois = get_dict_with_parents_child(gROIs)
         
         dict_rois_level = add_nlevel(dict_rois)
-        dict_rois_level = replace_symbol_by_dash_in_dict(dict_rois_level)
+        #dict_rois_level = replace_symbol_by_dash_in_dict(dict_rois_level)
         assert len(adata.obs)==len(df_annotations), "Inconsistent length between observations and annotations"
         
         #adding column with categorical annotation based on highest level roi
-        single_col_df = define_one_ROI_per_spot(df_annotations, dict_rois_level)
+        single_col_df = define_one_ROI_per_spot(df_annotations, dict_rois_level, gROIs, spot_radius, df_in_tissue)
         df_annotations = pd.concat([df_annotations, single_col_df], axis = 1)
         #adding all information to anndata
         adata.obs = pd.concat([adata.obs, df_annotations],axis=1)
+        
         adata.obs['ROI_one'] = adata.obs['ROI_one'].astype('object')
         adata.uns.update({'rois_hierarchy': dict_rois_level})
-        
+        print(adata.obs['ROI_one'])
         #save adata
         adata_path = out_folder + '/' + sample_name + '.h5ad'
         adata.write_h5ad(adata_path)
