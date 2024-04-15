@@ -45,7 +45,7 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
         rendered_thumb = Image.open(io.BytesIO(img_data))
         
         group_id = image.details.group.id #check group id
-        conn.setGroupForSession(group_id)
+        conn.setGroupForSession(group_id.val)
         # get image ROIs
         roi_service = conn.getRoiService()
         log.info("Retrieving ROIs")
