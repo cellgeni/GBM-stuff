@@ -146,6 +146,7 @@ def plot_small_image(segmentation_table, out_folder, sample_name, column_name_x,
         plt.scatter(sub_segm_table[column_name_x], sub_segm_table[column_name_y], color = random_color, s =1)
     path_fig = out_folder + '/' + sample_name[:-2] + '.png'
     plt.axis('equal')
+    plt.gca().invert_yaxis()
     axs.legend(ann_list_unique, fontsize = 15, markerscale = 5)
     plt.savefig(path_fig, format="jpg", dpi = 300)
 
