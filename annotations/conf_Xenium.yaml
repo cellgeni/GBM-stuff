@@ -1,0 +1,11 @@
+omero_image_id: 64924
+column_name_x: x_centroid
+column_name_y: y_centroid
+output_folder: /nfs/team283_imaging/playground_Stas/Xenium/OMERO_annotations_0424/test_out
+pixelsize: 0.216
+rot_angle: 0
+flipX: False
+flipY: False
+save_images: True
+segmentation_csv: 
+    - /nfs/team283/aa16/data/AA_ASD/xenium_10xOutput/output-XETG00055__0003753__Hob23-BRA-3_frontal__20230710__174614/cells.csv.gz
