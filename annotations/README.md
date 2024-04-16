@@ -1,6 +1,6 @@
 ## Description
 
-There are 2 codes for annotating VISIUM spots with pathological annotations taken from **OMERO**. 
+There are 2 codes for annotating VISIUM spots with pathological annotations taken from **OMERO** and one code to annotate Xenium defined cells (or by another segementation method). 
 
 **categorical_ann2SR.py** - is a code which uses OMERO annotations to allocate each VISIUM spot to one or several annotation ROIs. If VISIUM spot is splitted between 2 ROIs - the program will chose the one ROI which includes centroid of the spot. If the spot is inside "ROI_A" which is inside "ROI_B", the spot will be allocated to both ROIs without information about their relationships: "ROI_A;ROI_B". Output of this code is cswv file with barcodes of VISIUM spots and their corresponding annotation ROIs.
 
