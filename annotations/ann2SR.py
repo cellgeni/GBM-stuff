@@ -48,12 +48,9 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
         rendered_thumb = Image.open(io.BytesIO(img_data))
        
         group_id = image.details.group.id #check group id
-        #print(group_id.val)
         conn.setGroupForSession(group_id.val)
-        #print(conn)
         # get image ROIs
         roi_service = conn.getRoiService()
-        #print(roi_service)
         log.info("Retrieving ROIs")
         result = roi_service.findByImage(image.id, None)
         #result has property roi - for one given image id
@@ -61,7 +58,6 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
 
             primary_shape = roi.getPrimaryShape()
             name = primary_shape.getTextValue().val
-            #print(name)
             #if ROI name is empty - renamed to "Non_labelled", makes sure first letter is capital, if additional csv provided - unified all different ROIs name into one
             name = rename_ROI(name, path_ann_csv)
             #print(name)
@@ -73,13 +69,24 @@ def collect_ROIs_from_OMERO(omero_username, omero_password, omero_host, omero_im
                 "points": points
                 })
             except:
-                pass
+                if primary_shape.__class__.__name__ == 'RectangleI':
+                    points = get_corners_rectangle(primary_shape)
+                    ROIs.append({
+                    "name": name,
+                    "points": points
+                    })
+                else:
+                    pass
             
             log.debug(f"Found ROI id={roi.id.val} name='{name}' type={primary_shape.__class__.__name__}")
 
     log.info(f"Found {len(ROIs)} ROIs in total")
     return ROIs, image
 
+def get_corners_rectangle(primary_shape):
+    x0 = primary_shape.getX()._val; y0 = primary_shape.getY()._val
+    w = primary_shape.getWidth()._val; h = primary_shape.getHeight()._val
+    return [(x0, y0), (x0+w,y0), (x0+w,y0+h), (x0,y0+h)]
 
 def rename_ROI(old_name, path_ann_name_csv=None):
     name = old_name
@@ -366,22 +373,11 @@ def plot_small_image(adata, folder_out, sample_name):
 def plot_images_rois(adata, folder_out, sample_name, dict_rois_level):
     for k in dict_rois_level.keys():
         image_path = folder_out + '/' + sample_name + '_' + k + '.png'
-        sq.pl.spatial_scatter(adata, title = k, color=k, alpha=0.75, size=1.5, save = str(image_path))
+        try:
+            sq.pl.spatial_scatter(adata, title = k, color=k, alpha=0.75, size=1.5, save = str(image_path))
+        except:
+            pass
 
-def replace_symbol_by_dash_in_dict(some_dict):
-    my_dict = some_dict.copy()
-    for key in some_dict.keys():
-        key2 = key.replace('/', '-')
-        my_dict[key2] = my_dict.pop(key)
-    return my_dict
-
-def replace_symbol_by_dash_in_table(some_table):
-    my_table = some_table.copy()
-    for column_name in some_table.columns:
-        column_name2 = column_name.replace('/', '-')
-        if column_name2!=column_name:
-            my_table = my_table.rename(columns = {column_name: column_name2})
-    return my_table
 
 def main(csv_path, out_folder, path_ann_csv = None, save_small_image = True, save_images_rois = True):
     table_input = pd.read_csv(csv_path)
