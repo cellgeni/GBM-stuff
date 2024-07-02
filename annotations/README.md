@@ -10,7 +10,7 @@ Both of the functions use the same input (csv file) and output (output folder pa
 
 **ann2Xenium.py** - is allocating cells to manually annotated regions in categorical manner (similar to **categorical_ann2SR.py**). There is no hierarchical information about ROIs, and if one ROI is inside another, then annotations will be added as  "ROI_A; ROI_B". As input it takes configuration file (for example see conf_Xenium.yaml), and as output produces csv files which are copy of segmentation files with additional column - 'annotation'.
 
-**ann2Xenium_batch.py** - allows to run **ann2Xenium_v2.py** (which is functionally the same as **ann2Xenium.py**) for a batch of datasets. You will have to run it for master configuration file (see as an example **conf_batch.yaml**). User can specify its OMERO credentials in this configuration file, however there is a possibility to enter your credentials after programs starts to avoid saving your password in yaml file. For this specify *None* for *omero_username* or *omero_password* flags.
+**ann2Xenium_batch.py** - allows to run **ann2Xenium_v2.py** (which is functionally the same as **ann2Xenium.py**) for a batch of datasets. You will have to run it for master configuration file (see as an example **conf_Xenium_batch.yaml**). User can specify its OMERO credentials in this configuration file, however there is a possibility to enter your credentials after programs starts to avoid saving your password in yaml file. For this specify *None* for *omero_username* or *omero_password* flags.
 
 ## Preparation
 
