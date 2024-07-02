@@ -1,0 +1,5 @@
+conf_file_paths:
+    - /nfs/team283_imaging/playground_Stas/Xenium/OMERO_annotations_0424/test_batch_conf_files/ann2Xenium__Hob8-BRA-5_temporal__xenium_15_micron.yaml
+    - /nfs/team283_imaging/playground_Stas/Xenium/OMERO_annotations_0424/test_batch_conf_files/ann2Xenium__Hob8-BRA-5_temporal__cellpose_5_micron.yaml
+omero_username: None
+omero_password: None
