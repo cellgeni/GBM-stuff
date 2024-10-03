@@ -12,6 +12,8 @@ Both of the functions use the same input (csv file) and output (output folder pa
 
 **ann2Xenium_batch.py** - allows to run **ann2Xenium_v2.py** (which is functionally the same as **ann2Xenium.py**) for a batch of datasets. You will have to run it for master configuration file (see as an example **conf_Xenium_batch.yaml**). User can specify its OMERO credentials in this configuration file, however there is a possibility to enter your credentials after programs starts to avoid saving your password in yaml file. For this specify *None* for *omero_username* or *omero_password* flags.
 
+**ann2Xenium_v2.py** - is basically the same as **ann2Xenium.py**, the only difference is how do you pass your OMERO credentials. in this version you will need to store your credentials in configuration file (so job can be runned non-interactively). Then make sure the configuration file is well protected (or delete you OMERO credentials from configuration file just after the job is done) 
+
 ## Preparation
 
 Install conda environment using **environment.yml**. Make sure you have admin credentials for OMERO before running the script. Make a csv table file with information about OMERO ID of the sample, path to SpaceRanger output and rotational information. See **example.csv**
