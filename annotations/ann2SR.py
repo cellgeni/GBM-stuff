@@ -16,7 +16,7 @@ from omero.gateway import BlitzGateway
 from shapely import affinity,plotting
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
-
+import os
 import squidpy as sq
 import fire
 
@@ -367,7 +367,10 @@ def add_nlevel(dictionary):
 
 def plot_small_image(adata, folder_out, sample_name):
     sample_path = folder_out + '/' + sample_name
-    plots = sq.pl.spatial_scatter(adata,color="ROI_one",alpha=0.75,size=2.5,save = str(sample_path))
+    try:
+        plots = sq.pl.spatial_scatter(adata,color="ROI_one",alpha=0.75,size=2.5,save = str(sample_path))
+    except:
+        pass
 
 
 def plot_images_rois(adata, folder_out, sample_name, dict_rois_level):
@@ -379,7 +382,7 @@ def plot_images_rois(adata, folder_out, sample_name, dict_rois_level):
             pass
 
 
-def main(csv_path, out_folder, path_ann_csv = None, save_small_image = True, save_images_rois = True):
+def main(csv_path, out_folder, path_ann_csv = None, save_small_image = True, save_images_rois = True, save_csv = True):
     table_input = pd.read_csv(csv_path)
     #initialization
     omero_host, omero_username, omero_password = get_OMERO_credentials()
@@ -412,6 +415,10 @@ def main(csv_path, out_folder, path_ann_csv = None, save_small_image = True, sav
         #adding column with categorical annotation based on highest level roi
         single_col_df = define_one_ROI_per_spot(df_annotations, dict_rois_level, gROIs, spot_radius, df_in_tissue)
         df_annotations = pd.concat([df_annotations, single_col_df], axis = 1)
+        if save_csv:
+            fullpath = os.path.join(out_folder, sample_name + '.csv')
+            df_annotations.to_csv(fullpath)
+        
         #adding all information to anndata
         adata.obs = pd.concat([adata.obs, df_annotations],axis=1)
         
